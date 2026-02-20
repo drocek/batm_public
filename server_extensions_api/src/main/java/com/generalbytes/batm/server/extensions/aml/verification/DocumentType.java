@@ -9,5 +9,6 @@ public enum DocumentType {
     voter_id,
     work_permit,
     residence_permit,
-    other
+    other,
+    selfie
 }

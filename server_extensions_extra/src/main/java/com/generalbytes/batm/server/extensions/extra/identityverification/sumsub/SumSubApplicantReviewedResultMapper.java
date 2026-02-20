@@ -121,6 +121,7 @@ public class SumSubApplicantReviewedResultMapper {
             case PASSPORT -> DocumentType.passport;
             case RESIDENCE_PERMIT -> DocumentType.residence_permit;
             case ID_CARD -> DocumentType.national_identity_card;
+            case SELFIE -> DocumentType.selfie;
             default -> DocumentType.other;
         };
     }
