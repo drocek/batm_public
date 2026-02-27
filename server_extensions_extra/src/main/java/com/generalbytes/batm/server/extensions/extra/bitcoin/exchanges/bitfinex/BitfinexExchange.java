@@ -75,7 +75,7 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
     private static final HashMap<String, BigDecimal> rateAmounts = new HashMap<>();
     private static HashMap<String, Long> rateTimes = new HashMap<>();
     private static final long MAXIMUM_ALLOWED_TIME_OFFSET = 30 * 1000L;
-    private Set<String> depositCurrenciesSupported = new HashSet<>(Arrays.asList("BTC", "LTC", "ETH", "IOT", "BCH", "BTG", "EOS", "XMR", "NEO", "XRP", "XLM", "TRX", "ZEC", "DASH")); // see BitfinexAccountServiceRaw.requestDepositAddressRaw()
+    private Set<String> depositCurrenciesSupported = new HashSet<>(Arrays.asList("BTC", "LTC", "ETH", "IOT", "BCH", "BTG", "EOS", "XMR", "NEO", "XRP", "XLM", "TRX", "ZEC", "DASH", "L-BTC")); // see BitfinexAccountServiceRaw.requestDepositAddressRaw()
     private static final HashSet<String> FIAT_CURRENCIES = new HashSet<>();
     private static final HashSet<String> CRYPTO_CURRENCIES = new HashSet<>(Arrays.asList("BTC", "ETH", "LTC", "BCH", "DASH", "XMR", "L-BTC"));
 
@@ -153,7 +153,7 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
 
                 @Override
                 public BitfinexDepositAddressResponse requestDepositAddressRaw(String currency) throws IOException {
-                    if (!currency.equalsIgnoreCase("BCH")) {
+                    if (!mustMethodBeSpecified(currency)) {
                         return super.requestDepositAddressRaw(currency);
                     }
 
@@ -163,9 +163,23 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
                         signatureCreator,
                         new BitfinexDepositAddressRequest(
                             String.valueOf(exchange.getNonceFactory().createValue()),
-                            "bchn",
+                            getMethod(currency),
                             "exchange",
-                            0));
+                            0
+                        )
+                    );
+                }
+
+                private boolean mustMethodBeSpecified(String currency) {
+                    return "BCH".equalsIgnoreCase(currency) || "LBT".equalsIgnoreCase(currency);
+                }
+
+                private String getMethod(String currency) {
+                    if ("BCH".equalsIgnoreCase(currency)) {
+                        return "bchn";
+                    } else { // LBT (Liquid Bitcoin)
+                        return "lbt";
+                    }
                 }
             };
         }
@@ -291,7 +305,7 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
         try {
             RateLimiter.waitForPossibleCall(getClass());
             String result = accountService.withdrawFunds(
-                Currency.getInstance(getCurrencyCodeForSendCoins(cryptoCurrency)),
+                Currency.getInstance(getCurrencyCode(cryptoCurrency)),
                 amount,
                 destinationAddress
             );
@@ -301,13 +315,6 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
             log.error("Bitfinex exchange (withdrawFunds) ", e);
         }
         return null;
-    }
-
-    private String getCurrencyCodeForSendCoins(String cryptocurrency) {
-        if ("L-BTC".equals(cryptocurrency)) {
-            return "LBT";
-        }
-        return cryptocurrency;
     }
 
     @Override
@@ -393,7 +400,7 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
         AccountService accountService = getExchange().getAccountService();
         try {
             RateLimiter.waitForPossibleCall(getClass());
-            return accountService.requestDepositAddress(Currency.getInstance(cryptoCurrency)); // here it must be without getExchangeSpecificSymbol
+            return accountService.requestDepositAddress(Currency.getInstance(getCurrencyCode(cryptoCurrency))); // here it must be without getExchangeSpecificSymbol
         } catch (Exception e) {
             log.error("Error", e);
         }
@@ -849,9 +856,13 @@ public class BitfinexExchange implements IExchangeAdvanced, IRateSourceAdvanced 
         if (CryptoCurrency.USDT.getCode().equals(cryptoCurrency)) {
             return "UST";
         }
-        if (CryptoCurrency.L_BTC.getCode().equals(cryptoCurrency)) {
+        return getCurrencyCode(cryptoCurrency);
+    }
+
+    private String getCurrencyCode(String cryptocurrency) {
+        if (CryptoCurrency.L_BTC.getCode().equals(cryptocurrency)) {
             return "LBT";
         }
-        return cryptoCurrency;
+        return cryptocurrency;
     }
 }
